@@ -1,0 +1,11 @@
+insert A->B; 
+
+
+Reply from server : INSERT DONE 
+ 
+ 
+
+ 
+ 
+
+ 

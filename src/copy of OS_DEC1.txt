@@ -1,0 +1,924 @@
+//============================================================================
+// Name        : OS_DEC.cpp
+// Author      : Puneet Arora
+//============================================================================
+#include <cstdlib>
+#include <exception>
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <netdb.h>
+#include <arpa/inet.h>
+#include <string.h>
+#include <signal.h>
+#include <sys/wait.h>
+#include <errno.h>
+#include <stdio.h>
+#include <sys/stat.h>
+#include <unistd.h>
+#include <fstream>
+#include <pthread.h>
+#include <time.h>
+#include <sstream>
+#include <iomanip>
+#include <string>
+#include <semaphore.h>
+#include <string.h>
+#include <dirent.h>
+#include<iostream>
+#include<stdio.h>
+#include<stdlib.h>
+#include<fcntl.h>
+#include <fstream>
+using std::ofstream;
+
+#include <cstdlib>
+//#include "server.h"
+using namespace std;
+
+fd_set master;
+char buffer[256]="";
+int port=9090;//default port
+int flag=0;
+char* logFile="log.txt";
+
+//typedef char graphElementT;
+typedef struct graphCDT *graphADT;
+
+typedef struct vertexTag {
+	char element;
+	int visited;
+	struct edgeTag *edges;
+	struct vertexTag *next;
+} vertexT;
+
+typedef struct edgeTag {
+	char element;
+	struct vertexTag *connectsTo;
+	struct edgeTag *next;
+} edgeT;
+
+//typedef struct graphCDT {
+//	vertexT *vertices;
+//} graphCDT;
+
+
+typedef struct node {
+	char fromelement;
+	char toelement;
+	int idnt;
+	struct node *next;
+} nodeT;
+
+vertexT* search_vertex(char , vertexT **);
+
+vertexT *head = NULL;
+vertexT *curr = NULL;
+
+nodeT *head_node = NULL;
+nodeT *curr_node = NULL;
+
+
+nodeT* create_list(char fromelement, char toelement, int idnt1)
+{
+
+	nodeT *ptr = (nodeT*)malloc(sizeof(nodeT));
+	if(NULL == ptr)
+	{
+		printf("\n Out of Memory \n");
+		return NULL;
+	}
+	ptr->fromelement = fromelement;
+	ptr->toelement = toelement;
+	ptr->idnt = idnt1;
+	ptr->next = NULL;
+
+	head_node = curr_node = ptr;
+	return ptr;
+}
+
+nodeT* add_to_list(char fromelement, char toelement, int idnt1)
+{
+	if(NULL == head_node)
+	{
+		return (create_list(fromelement, toelement,idnt1));
+	}
+
+
+	nodeT *ptr = (nodeT*)malloc(sizeof(nodeT));
+	if(NULL == ptr)
+	{
+		printf("\n Out of memory \n");
+		return NULL;
+	}
+	ptr->fromelement = fromelement;
+	ptr->toelement = toelement;
+	ptr->idnt = idnt1;
+	ptr->next = NULL;
+	//	if(add_to_end)
+	//	{
+	curr_node->next = ptr;
+	curr_node = ptr;
+	//	}
+	//	else
+	//	{
+	//		ptr->next = head;
+	//		head = ptr;
+	//	}
+	return ptr;
+}
+
+
+
+int del_vertex(char element)
+{
+	//q=head;
+	if(head==NULL)
+	{
+		printf("\n\nEmpty Linked List.Cant Delete The Data.");
+		return 0;
+	}
+	else
+	{
+		vertexT *old,*temp;
+		int flag=0;
+		temp=head;
+		while(temp!=NULL)
+		{
+			if(temp->element==element)
+			{
+				if(temp==head)         /* First Node case */
+					head=temp->next;  /* shifted the header node */
+				else
+					old->next=temp->next;
+				free(temp);
+				flag=1;
+			}
+			else
+			{
+				old=temp;
+				temp=temp->next;
+			}
+		}
+		if(flag==0){
+			printf("\nData Not Found...");
+			return 0;
+		}
+		else{
+			printf("\nData Deleted...Tap a key to continue");
+			return 1;
+		}
+
+
+	}
+
+
+}
+
+
+
+int del_edge(char fromelement,char edg)
+{
+	vertexT* vtex=search_vertex(fromelement,NULL);
+	if(vtex==NULL)
+	{
+		printf("\n\nVertex NOT FOUND.");
+		return 0;
+	}
+	else
+	{
+		edgeT *old,*temp;
+		int flag=0;
+		temp=vtex->edges;
+		while(temp!=NULL)
+		{
+			if(temp->element==edg)
+			{
+				if(temp==vtex->edges)         /* First Node case */
+					vtex->edges=temp->next;  /* shifted the header node */
+				else
+					old->next=temp->next;
+				free(temp);
+				flag=1;
+			}
+			else
+			{
+				old=temp;
+				temp=temp->next;
+			}
+		}
+		if(flag==0){
+			printf("\nEDGE Not Found...");
+			return 0;
+		}
+		else{
+			printf("\nEDGE Deleted...Tap a key to continue");
+			return 1;
+		}
+	}
+
+}
+
+void revoke(){
+
+	if(head_node==NULL)
+	{
+		printf("\n\nEmpty Linked List.Cant Delete The Data.");
+		//		return 0;
+	}
+	else
+	{
+
+		nodeT *temp;
+		int flag=0;
+		temp=head_node;
+		while(temp!=NULL)
+		{
+			if(temp->idnt==1){
+				del_vertex(temp->fromelement);
+			}
+			else if(temp->idnt==2){
+				del_edge(temp->fromelement,temp->toelement);
+			}
+			else{
+				printf("invalid identity");
+			}
+			temp=temp->next;
+		}
+	}
+
+
+}
+
+
+
+
+
+vertexT* create_graph(char element,int visit)
+{
+	printf("\ncreating the graph\n");
+	vertexT *ptr = (vertexT*)malloc(sizeof(vertexT));
+	if(NULL == ptr)
+	{
+		printf("\n Out of Memory \n");
+		return NULL;
+	}
+	ptr->element = element;
+	ptr->visited = visit;
+	ptr->next = NULL;
+	ptr->edges = NULL;
+
+	head = curr = ptr;
+	return ptr;
+}
+
+vertexT* add_vertex(char element,int visit, bool add_to_end)
+{
+	if(NULL == head)
+	{
+		return (create_graph(element,visit));
+	}
+
+
+	vertexT *ptr = (vertexT*)malloc(sizeof(vertexT));
+	if(NULL == ptr)
+	{
+		printf("\n Out of memory \n");
+		return NULL;
+	}
+	ptr->element = element;
+	ptr->visited = visit;
+	ptr->next = NULL;
+	ptr->edges = NULL;
+
+	if(add_to_end)
+	{
+		curr->next = ptr;
+		curr = ptr;
+	}
+	else
+	{
+		ptr->next = head;
+		head = ptr;
+	}
+	return ptr;
+}
+
+
+vertexT* search_vertex(char element, vertexT **prev)
+{
+	vertexT *ptr = head;
+	vertexT *tmp = NULL;
+	bool found = false;
+
+	while(ptr != NULL)
+	{
+		if(ptr->element == element)
+		{
+			found = true;
+			printf("found the element [%c]",ptr->element);
+			break;
+		}
+		else
+		{
+			tmp = ptr;
+			ptr = ptr->next;
+		}
+	}
+
+	if(true == found)
+	{
+		if(prev)
+			*prev = tmp;
+		return ptr;
+	}
+	else
+	{
+		printf("\nelement not found [%c]\n",element);
+		return NULL;
+	}
+}
+
+
+
+
+edgeT* add_edge(char fromelement,char toelement, bool add_to_end)
+{
+	vertexT *fromvertex = search_vertex(fromelement,NULL);
+	vertexT *tovertex = search_vertex(toelement,NULL);
+
+	if(fromvertex==NULL || tovertex==NULL){
+		printf("first insert the vertices [%c] and [%c]",fromelement,toelement);
+		return NULL;
+	}
+	else{
+		edgeT *edge=fromvertex->edges;
+
+		if(fromvertex->edges==NULL){
+
+			edgeT *ptr = (edgeT*)malloc(sizeof(edgeT));
+			if(NULL == ptr)
+			{
+				printf("\n Out of memory :add edge\n");
+				return NULL;
+			}
+			ptr->element = toelement;
+			ptr->connectsTo = tovertex;
+			ptr->next = NULL;
+
+			if(add_to_end)
+			{
+				fromvertex->edges = ptr;
+			}
+			else
+			{
+				//		ptr->next = head;
+				//	head = ptr;
+				printf("1.in else in add_edge");
+			}
+			return ptr;
+
+		}else{
+
+			while(edge->next!=NULL){
+				printf("traversing edges of vertex [%c] : edge [%c]",fromvertex->element,edge->element);
+				edge=edge->next;
+
+			}
+
+
+			edgeT *ptr = (edgeT*)malloc(sizeof(edgeT));
+			if(NULL == ptr)
+			{
+				printf("\n Out of memory :add edge\n");
+				return NULL;
+			}
+			ptr->element = toelement;
+			ptr->connectsTo = tovertex;
+			ptr->next = NULL;
+
+			if(add_to_end)
+			{
+				edge->next = ptr;
+			}
+			else
+			{
+				printf("2.in else in add_edge");
+			}
+			return ptr;
+		}
+
+	}
+
+}
+
+edgeT* search_edge(char fromelement, char toelement){
+
+	vertexT *fromvertex = search_vertex(fromelement,NULL);
+	vertexT *tovertex = search_vertex(toelement,NULL);
+
+	if(fromvertex==NULL || tovertex==NULL){
+		printf("first insert the vertices : [%c] or [%c]",fromelement,toelement);
+		return NULL;
+	}else{
+		edgeT *edge=fromvertex->edges;
+		if(fromvertex->edges==NULL){
+			return NULL;
+		}else{
+
+			while(edge!=NULL){
+				if(edge->element==toelement){
+					printf("found EDGE from [%c] to [%c]",fromelement,edge->element);
+					return edge;
+				}else{
+					edge=edge->next;
+				}
+				//
+				//				printf("traversing edges of vertex [%c] : edge [%c]",fromvertex->element,edge->element);
+				//				edge=edge->next;
+			}
+			return NULL;
+
+		}
+
+
+	}
+
+}
+
+
+
+
+
+static void display(){
+	cout<<"\n"<<"DISPLAY GRAPH:"<<"\t ";
+	vertexT *temp=head;
+	edgeT *temp1;
+	while(temp!=NULL){
+		cout<<"\n"<<temp->element<<"\t ";
+
+		temp1=temp->edges;
+		while(temp1!=NULL){
+			//cout<<"\t edges list:";
+			cout<<temp1->element<<" ";
+			temp1=temp1->next;
+		}
+		temp=temp->next;
+	}
+	printf("\n");
+}
+
+
+static int RecIsReachable(char dest,vertexT *startP){
+	edgeT *edgeP;
+
+	if (startP->visited)
+		return 0;
+	if (startP->element == dest)
+		return 1;
+
+	startP->visited = 1;
+	for (edgeP = startP->edges;
+			edgeP != NULL;
+			edgeP = edgeP->next) {
+		if (RecIsReachable(dest, edgeP->connectsTo))
+			return 1;
+	}
+
+	return 0;
+}
+
+
+int GraphIsReachable(graphADT graph,char dest,char source){
+	vertexT *vertP;
+	vertexT *startP = NULL;
+	for (vertP = head;
+			vertP != NULL;
+			vertP = vertP->next) {
+		vertP->visited = 0;
+		if (vertP->element == source)
+			startP = vertP;
+	}
+
+	if (startP == NULL)
+		return 0;
+	return RecIsReachable(dest, startP);
+}
+
+int query(char e1, char e2){
+	if(search_vertex(e1,NULL)==NULL){
+		return 1;
+	}else if(search_vertex(e2,NULL)==NULL){
+		return 2;
+	}else if(GraphIsReachable(NULL,e2,e1)>0){
+		return 3;
+	}else if(GraphIsReachable(NULL,e1,e2)>0){
+		return 4;
+	}else{
+		return 5;
+	}
+}
+
+void logging(char * log_file,string buf){
+	ofstream outdata;
+	outdata.open(log_file,ios::out | ios::app);
+	char logbuf[1024];
+	if( !outdata ) { // file couldn't be opened
+		cerr << "Error: file could not be opened" << endl;
+		exit(1);
+	}
+	outdata << buf << " " << endl;
+	outdata.close();
+
+}
+
+int main(int argc,char** argv){
+
+	int ch;
+	opterr=0;
+	while((ch=getopt(argc,argv,"p:hl:"))!=-1){
+		switch(ch){
+
+		case'h':
+		{
+			// getHelpInfo();
+			exit(0);
+			break;
+		}
+
+
+		case'l':
+		{
+
+			logFile=optarg;
+			//flag=1;
+			//cout<<"flag is="<<flag;
+			break;
+		}
+		case'p':
+		{
+			//cout<<"port is="<<port;
+			port=atoi(optarg);
+			//cout<<"\n port after is="<<port;
+			break;
+		}
+		default:
+			printf("Unknown Options!");
+			break;
+		}
+	}
+	ofstream outdata;
+	outdata.open(logFile,ios::out);
+	outdata.close();
+	int s;
+	//int port=8080;
+	struct sockaddr_in serv_addr, remote;
+	int newsock;
+	socklen_t sine_size;
+	int fdmax;
+	fd_set temp_sock;
+	//int server_socket,client_socket;
+
+	s=socket(AF_INET,SOCK_STREAM,0);
+
+	if(s==-1){
+		cout<<"Could not create a listening socket";
+		exit(0);
+	}
+	memset(&serv_addr, 0, sizeof(serv_addr));
+	serv_addr.sin_family      = AF_INET;
+	serv_addr.sin_addr.s_addr = htonl(INADDR_ANY);
+	serv_addr.sin_port        = htons(port);
+	if ( bind(s, (struct sockaddr *) &serv_addr, sizeof(serv_addr)) < 0 )
+	{
+		cout<<"Could not bind to the listening socket"<<std::endl;
+		exit(0);
+	}
+	cout<<"server started"<<std::endl;
+	//* 'Logic' of the following part of the code belongs to Beej's guide to network programming   *//
+	//* URL: http://beej.us/guide/bgnet/output/html/multipage/advanced.html#select              *//
+	//* It starts here             *//
+	FD_ZERO(&master);
+	listen(s, 5);
+	FD_SET(s,&master);
+	fdmax=s;
+	newsock = s;
+	std::string log;
+	char c='\n';
+	while (1)
+	{
+		temp_sock=master;
+		if (select(fdmax+1, &temp_sock, NULL, NULL, NULL) == -1) {
+			perror("select");
+			exit(4);
+		}
+		int k=0;
+		for(int i=0; i<=fdmax;i++)
+		{
+			//k=i;
+			if (FD_ISSET(i, &temp_sock))
+			{
+				if (i == s)
+				{
+					sine_size=sizeof remote;
+					newsock = accept(s, (struct sockaddr *) &remote, &sine_size);
+					cout<<"accepted"<<std::endl;
+					if (newsock==-1)
+						continue;
+					else
+					{
+						FD_SET(newsock, &master);
+						if (newsock> fdmax)
+						{
+							fdmax = newsock;
+						}
+					}
+				}
+				else
+					//* 			It ends here  					*//
+				{
+					int recvd=0;
+					char buf[1000];
+					recvd=read(i,buf,1000);
+					if(recvd<0){
+						FD_CLR(i,&master);
+						close(i);
+					}
+					else{
+						buf[recvd] = '\0';
+						char client[1000];
+
+						string arg=buf;
+
+						logging(logFile,buf);
+						string ibuf[50];
+						int events=0;
+						string req;
+						stringstream istream(arg);
+						while(getline(istream,req,';')){
+							stringstream istream2(req);
+							string curr;
+							//char* tempcurr;
+							string e1,e2;
+							char event1,event2;
+							int iposition=req.find("insert");
+							if(iposition!=-1){
+								while(getline(istream2,curr,' ')){
+									if(curr.find("->")!=string::npos){
+										ibuf[events]=curr;
+										//tempcurr=curr;
+										e1=curr[0];
+										e2=curr[3];
+										event1=e1[0];
+										event2=e2[0];
+										//tempcurr=event2+"->" ;
+
+										//	add_vertex('E',0,true);
+										//	add_edge('A','E',true);
+										//	display();
+										vertexT *fromvertex = search_vertex(event1,NULL);
+										vertexT *tovertex = search_vertex(event2,NULL);
+
+										if(fromvertex==NULL){
+											printf("adding vertex 1");
+											add_vertex(event1,0,false);
+											display();
+											add_to_list(event1,'0',1);
+										}
+										if(tovertex==NULL){
+											printf("adding vertex 2");
+											add_vertex(event2,0,false);
+											display();
+											add_to_list(event2,'0',1);
+										}
+
+										//										if(GraphIsReachable(NULL,event2,event1)>0){
+										//											printf("\nevent1->event2: reachable");
+										//											s=1;
+										//										}
+										if(GraphIsReachable(NULL,event1,event2)>0){
+											printf("\nevent2->event1: reachable \n");
+											s=1;
+										}else{
+											if(search_edge(event1,event2)==NULL){
+
+												add_edge(event1,event2,true);
+												add_to_list(event1,event2,2);
+
+											}
+											else{
+												printf("Edge already present");
+											}
+											//		edgeT* ed=search_edge(event1,event2);
+											//		printf("*********edge found : element : [%c]",ed->element);
+
+											s=0;
+										}
+
+										//		int s=insert(event1,event2);
+										if(s==0){
+											flag=0;
+										}
+										else if(s==1){
+											flag=1;
+										}
+										events++;
+									}
+								}
+								if(flag){
+									revoke();
+									strcat(client,"\n Reply from server :");
+									strcat(client,"CONFLICT DETECTED . INSERT FAILED  \n");
+									//strcat(client,tempcurr);
+									//strcat(client," cannot be true \n");
+								}
+								else if(!flag){
+									head_node=NULL;
+									curr_node=NULL;
+									strcat(client,"\n Reply from server :");
+									strcat(client,"INSERT DONE \n");
+								}
+
+								display();
+
+							}
+							else if(req.compare("reset")==0){
+								//							reset();
+								head_node=NULL;
+								curr_node=NULL;
+								char msg[]="Reset Done\n";
+								strcat(client,"\n Reply from server :");
+								strcat(client,msg);
+							}
+							//							else{
+							//								int qposition=req.find("query");
+							//								if(qposition!=-1){
+							else if(req.find("query")!=-1){
+								int qposition=req.find("query");
+								//cout<<"\n position is "<<qposition<<"\n";
+								//qposition+=4;
+								char event1,event2;
+								stringstream qstream(req);
+								//int c=1;
+								event1=req[qposition+6];
+								event2=req[qposition+8];
+								int q=query(event1,event2);
+								int w;
+								if(q==5){
+									char temp1[2];
+									char temp2[2];
+									temp1[0]=event1;
+									temp1[1]='\0';
+									temp2[0]=event2;
+									temp2[1]='\0';
+									char msg1[]=" and ";
+									char msg[]=" are concurrent \n";
+									strcat(client,"\n Reply from server :");
+									strcat(client,temp1);
+									strcat(client, msg1);
+									strcat(client,temp2);
+									strcat(client,msg);
+								}
+								else if(q==4){
+									char temp1[2];
+									char temp2[2];
+									temp1[0]=event2;
+									temp1[1]='\0';
+									temp2[0]=event1;
+									temp2[1]='\0';
+									strcat(client,"\n Reply from server :");
+									strcat(client,temp1);
+									char msg[]=" happened before ";
+									strcat(client,msg);
+									strcat(client,temp2);
+								}
+								else if(q==3){
+									char temp1[2];
+									char temp2[2];
+									temp1[0]=event1;
+									temp1[1]='\0';
+									temp2[0]=event2;
+									temp2[1]='\0';
+									strcat(client,"\n Reply from server :");
+									strcat(client,temp1);
+									char msg[]=" happened before ";
+									strcat(client,msg);
+									strcat(client,temp2);
+								}
+								else if(q==1||q==2){
+									char temp[3];
+									char* str;
+									if(q==0){
+										temp[ 0 ] = event1;
+										temp[ 1 ] = '\n';
+									}
+									else if(q==1){
+										temp[ 0 ] = event2;
+										temp[ 1 ] = '\n';
+									}
+									char msg[]= " Event not found :";
+									strcat(client,"\n Reply from server :");
+									strcat(client,msg);
+									strcat(client,temp);
+
+									//										char* m2=event2;
+									//										strcat(client,m2);
+									//										char msg[]=" :event not found \n";
+									//										strcat(client,msg);
+
+
+								}
+								else{
+
+									printf("INVALID value of Q");
+								}
+
+							}else{
+								display();
+								//								printf("\ndeleting vertex C");
+								//								del_vertex('C');
+								//								display();
+								//								printf("\ndeleting edge A->C");
+								//								del_edge('A','C');
+								//								display();
+								//								printf("\ndeleting vertex B->C");
+								//								del_edge('B','C');
+								//								display();
+							}
+						}
+						logging(logFile,client);
+						write(i,client,strlen(client));
+					}
+
+				}
+
+
+			}
+		}
+	}
+	return 0;
+}
+
+
+
+
+
+//int main() {
+
+//	cout << "!!!Hello World!!!" << endl; // prints !!!Hello World!!!
+//	add_vertex('A',0,true);
+//	//	cout << "!!!Hello World!!!" << endl; // prints !!!Hello World!!!
+//	add_vertex('B',0,true);
+//	add_edge('A','B',true);
+//	display();
+//
+//	add_vertex('C',0,true);
+//	add_edge('B','C',true);
+//
+//	display();
+//
+//	add_vertex('D',0,true);
+//	add_edge('C','D',true);
+//	display();
+//
+//	if(GraphIsReachable(NULL,'A','D')>0){
+//		printf("\nyes it is working");
+//
+//	}
+//	else{
+//		printf("\nsoh shit \n");
+//	}
+//
+//	add_edge('D','A',true);
+//	display();
+//
+//	add_edge('A','C',true);
+//	display();
+//
+//	add_vertex('E',0,true);
+//	add_edge('A','E',true);
+//	display();
+//
+////	add_edge('D','E',true);
+////	display();
+//
+////	add_edge('E','B',true);
+////	display();
+//
+//	if(GraphIsReachable(NULL,'E','B')>0){
+//			printf("\nyes it is working*************");
+//
+//		}
+//		else{
+//			printf("\nsoh shit \n");
+//		}
+//
+//	if(GraphIsReachable(NULL,'B','E')>0){
+//			printf("\nyes it is working*************");
+//
+//		}
+//		else{
+//			printf("\nsoh shit **********\n");
+//		}
+//	return 0;
+//}

@@ -1,0 +1,39 @@
+insert A->B; 
+Reply from server 
+
+Reply from server : INSERT DONE 
+ 
+insert B->C; 
+Reply from server 
+
+Reply from server : INSERT DONE 
+ 
+reset; 
+Reply from server 
+
+Reply from server : Reset Done
+ 
+insert A->F; 
+Reply from server 
+
+Reply from server : INSERT DONE 
+ 
+insert A->B; reset; 
+Reply from server 
+
+Reply from server : INSERT DONE 
+ 
+asdasd 
+Reply from server 
+ 
+insert C->X; 
+Reply from server 
+
+Reply from server : INSERT DONE 
+ 
+ 
+Reply from server 
+ 
+ 
+Reply from server 
+ 

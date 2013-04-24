@@ -1,0 +1,361 @@
+//============================================================================
+// Name        : OS_DEC.cpp
+// Author      : Puneet Arora
+//============================================================================
+
+#include <iostream>
+#include<stdio.h>
+#include<stdlib.h>
+#include<stdbool.h>
+using namespace std;
+
+//typedef char graphElementT;
+typedef struct graphCDT *graphADT;
+
+typedef struct vertexTag {
+	char element;
+	int visited;
+	struct edgeTag *edges;
+	struct vertexTag *next;
+} vertexT;
+
+typedef struct edgeTag {
+	char element;
+	struct vertexTag *connectsTo;
+	struct edgeTag *next;
+} edgeT;
+
+typedef struct graphCDT {
+	vertexT *vertices;
+} graphCDT;
+
+vertexT *head = NULL;
+vertexT *curr = NULL;
+
+
+
+
+vertexT* create_graph(char element,int visit)
+{
+
+	vertexT *ptr = (vertexT*)malloc(sizeof(vertexT));
+	if(NULL == ptr)
+	{
+		printf("\n Out of Memory \n");
+		return NULL;
+	}
+	ptr->element = element;
+	ptr->visited = visit;
+	ptr->next = NULL;
+	ptr->edges = NULL;
+
+	head = curr = ptr;
+	return ptr;
+}
+
+vertexT* add_vertex(char element,int visit, bool add_to_end)
+{
+	if(NULL == head)
+	{
+		return (create_graph(element,visit));
+	}
+
+
+	vertexT *ptr = (vertexT*)malloc(sizeof(vertexT));
+	if(NULL == ptr)
+	{
+		printf("\n Out of memory \n");
+		return NULL;
+	}
+	ptr->element = element;
+	ptr->visited = visit;
+	ptr->next = NULL;
+	ptr->edges = NULL;
+
+	if(add_to_end)
+	{
+		curr->next = ptr;
+		curr = ptr;
+	}
+	else
+	{
+		ptr->next = head;
+		head = ptr;
+	}
+	return ptr;
+}
+
+
+vertexT* search_vertex(char element, vertexT **prev)
+{
+	vertexT *ptr = head;
+	vertexT *tmp = NULL;
+	bool found = false;
+
+	while(ptr != NULL)
+	{
+		if(ptr->element == element)
+		{
+			found = true;
+			printf("found the element [%c]",ptr->element);
+			break;
+		}
+		else
+		{
+			tmp = ptr;
+			ptr = ptr->next;
+		}
+	}
+
+	if(true == found)
+	{
+		if(prev)
+			*prev = tmp;
+		return ptr;
+	}
+	else
+	{
+		printf("element not found");
+		return NULL;
+	}
+}
+
+
+edgeT* add_edge(char fromelement,char toelement, bool add_to_end)
+{
+	vertexT *fromvertex = search_vertex(fromelement,NULL);
+	vertexT *tovertex = search_vertex(toelement,NULL);
+
+	if(fromvertex==NULL || tovertex==NULL){
+		printf("first insert the vertives [%c] and [%c]",fromelement,toelement);
+		return NULL;
+	}
+	else{
+		edgeT *edge=fromvertex->edges;
+
+		if(fromvertex->edges==NULL){
+
+			edgeT *ptr = (edgeT*)malloc(sizeof(edgeT));
+			if(NULL == ptr)
+			{
+				printf("\n Out of memory :add edge\n");
+				return NULL;
+			}
+			ptr->element = toelement;
+			ptr->connectsTo = tovertex;
+			ptr->next = NULL;
+
+			if(add_to_end)
+			{
+				fromvertex->edges = ptr;
+			}
+			else
+			{
+				//		ptr->next = head;
+				//	head = ptr;
+				printf("1.in else in add_edge");
+			}
+			return ptr;
+
+		}else{
+
+			while(edge->next!=NULL){
+				printf("traversing edges of vertex [%c] : edge [%c]",fromvertex->element,edge->element);
+				edge=edge->next;
+
+			}
+
+
+			edgeT *ptr = (edgeT*)malloc(sizeof(edgeT));
+			if(NULL == ptr)
+			{
+				printf("\n Out of memory :add edge\n");
+				return NULL;
+			}
+			ptr->element = toelement;
+			ptr->connectsTo = tovertex;
+			ptr->next = NULL;
+
+			if(add_to_end)
+			{
+				edge->next = ptr;
+			}
+			else
+			{
+				printf("2.in else in add_edge");
+			}
+			return ptr;
+		}
+
+	}
+
+}
+
+
+
+
+
+
+static void display(){
+	cout<<"\n"<<"DISPLAY GRAPH:"<<"\t ";
+	vertexT *temp=head;
+	edgeT *temp1;
+	while(temp!=NULL){
+		cout<<"\n"<<temp->element<<"\t ";
+
+		temp1=temp->edges;
+		while(temp1!=NULL){
+			//cout<<"\t edges list:";
+			cout<<temp1->element<<" ";
+			temp1=temp1->next;
+		}
+		temp=temp->next;
+	}
+}
+
+
+static int RecIsReachable(char dest,vertexT *startP){
+	edgeT *edgeP;
+
+	/* Have we been here already? */
+
+	if (startP->visited)
+		return 0;
+
+	/*
+	 * Is this the destination?  If so,
+	 * we've reached it!
+	 */
+
+	if (startP->element == dest)
+		return 1;
+
+	/* Don't come here again. */
+
+	startP->visited = 1;
+
+	/*
+	 * See if we can get there from each
+	 * of the vertices we connect to.
+	 * If we can get there from at least
+	 * one of them, it is reachable.
+	 */
+
+	for (edgeP = startP->edges;
+			edgeP != NULL;
+			edgeP = edgeP->next) {
+		if (RecIsReachable(dest, edgeP->connectsTo))
+			return 1;
+	}
+
+	/*
+	 * Couldn't get there from any of our
+	 * neighbors, so it is unreachable from
+	 * here.
+	 */
+
+	return 0;
+}
+
+
+int GraphIsReachable(graphADT graph,char dest,char source){
+	vertexT *vertP;
+	vertexT *startP = NULL;
+
+	//graph->vertices=head;
+	/*
+	 * Go through each vertex, mark them
+	 * as "not visited" and also record
+	 * where the start vertex is.
+	 */
+
+//	for (vertP = graph->vertices;
+	for (vertP = head;
+			vertP != NULL;
+			vertP = vertP->next) {
+		vertP->visited = 0;
+		if (vertP->element == source)
+			startP = vertP;
+	}
+
+	/* Make sure the starting point exists. */
+
+	if (startP == NULL)
+		return 0;
+
+	/* Now see if we can get there from here. */
+
+	return RecIsReachable(dest, startP);
+}
+
+
+
+
+int main() {
+
+//	cout << "!!!Hello World!!!" << endl; // prints !!!Hello World!!!
+//	add_vertex('A',0,true);
+//	//	cout << "!!!Hello World!!!" << endl; // prints !!!Hello World!!!
+//	add_vertex('B',0,true);
+//	add_edge('A','B',true);
+//	display();
+//
+//	add_vertex('C',0,true);
+//	add_edge('B','C',true);
+//
+//	display();
+//
+//	add_vertex('D',0,true);
+//	add_edge('C','D',true);
+//	display();
+//
+//	if(GraphIsReachable(NULL,'A','D')>0){
+//		printf("\nyes it is working");
+//
+//	}
+//	else{
+//		printf("\nsoh shit \n");
+//	}
+//
+//	add_edge('D','A',true);
+//	display();
+//
+//	add_edge('A','C',true);
+//	display();
+//
+//	add_vertex('E',0,true);
+//	add_edge('A','E',true);
+//	display();
+//
+////	add_edge('D','E',true);
+////	display();
+//
+////	add_edge('E','B',true);
+////	display();
+//
+//	if(GraphIsReachable(NULL,'E','B')>0){
+//			printf("\nyes it is working*************");
+//
+//		}
+//		else{
+//			printf("\nsoh shit \n");
+//		}
+//
+//	if(GraphIsReachable(NULL,'B','E')>0){
+//			printf("\nyes it is working*************");
+//
+//		}
+//		else{
+//			printf("\nsoh shit **********\n");
+//		}
+//	return 0;
+
+
+
+
+
+
+
+
+
+}
